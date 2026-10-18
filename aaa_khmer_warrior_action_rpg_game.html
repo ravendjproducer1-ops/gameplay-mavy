@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Khmer Warrior: Ancient Legends AAA RPG</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Khmer -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanten:wght@400;700&family=Moul&family=Siemreap&display=swap" rel="stylesheet">
+    <style>
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Siemreap', sans-serif;
+            background-color: #050508;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        .font-moul { font-family: 'Moul', serif; }
+        .font-khmer { font-family: 'Siemreap', sans-serif; }
+
+        /* Custom Cinematic Glassmorphism UI */
+        .glass-panel {
+            background: rgba(12, 10, 18, 0.75);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), inset 0 0 12px rgba(212, 175, 55, 0.15);
+        }
+        
+        .gold-border {
+            border: 2px solid #d4af37;
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.4);
+        }
+
+        .gold-text-glow {
+            color: #fbbf24;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.7), 0 0 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .red-text-glow {
+            color: #ef4444;
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+        }
+
+        /* Cooldown Overlay */
+        .cooldown-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+            border-radius: 0.5rem;
+        }
+
+        /* Screen Flash Animations */
+        @keyframes damageFlash {
+            0% { opacity: 0.6; }
+            100% { opacity: 0; }
+        }
+        .damage-flash {
+            animation: damageFlash 0.3s ease-out forwards;
+        }
+
+        /* Canvas Fullscreen */
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+    </style>
+</head>
+<body class="relative w-full h-full bg-black text-white select-none">
+
+    <!-- Canvas Game View -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Hurt Screen Flash -->
+    <div id="hurtFlash" class="pointer-events-none absolute inset-0 bg-red-600/30 opacity-0 z-10"></div>
+
+    <!-- UI OVERLAY -->
+    <div class="pointer-events-none absolute inset-0 z-20 flex flex-col justify-between p-3 md:p-6">
+        
+        <!-- TOP HUD BAR -->
+        <div class="flex justify-between items-start w-full gap-2">
+            
+            <!-- Character Avatar & Status -->
+            <div class="pointer-events-auto flex items-center gap-3 glass-panel p-2.5 rounded-2xl max-w-xs md:max-w-md">
+                <div class="relative">
+                    <!-- Avatar Frame -->
+                    <div class="w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden gold-border bg-slate-900 flex items-center justify-center">
+                        <svg class="w-full h-full text-amber-500 fill-current" viewBox="0 0 100 100">
+                            <!-- SVG Stylized Warrior Face Avatar -->
+                            <circle cx="50" cy="50" r="48" fill="#1e1b18"/>
+                            <path d="M50 15 L62 38 L50 32 L38 38 Z" fill="#d4af37"/>
+                            <circle cx="50" cy="42" r="18" fill="#e2a87a"/>
+                            <path d="M40 40 Q50 35 60 40 Q50 43 40 40" fill="#3a2510"/>
+                            <rect x="35" y="58" width="30" height="25" rx="5" fill="#8b0000"/>
+                            <path d="M42 58 L50 75 L58 58" fill="#d4af37"/>
+                        </svg>
+                    </div>
+                    <span class="absolute -bottom-1 -right-1 bg-amber-600 text-black text-xs font-bold px-1.5 py-0.5 rounded-full border border-yellow-300">
+                        Lv.42
+                    </span>
+                </div>
+
+                <div class="flex-1 min-w-[130px] md:min-w-[180px]">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-moul text-sm md:text-base text-amber-400">វីរបុរស រីន</span>
+                        <span id="hpText" class="text-xs text-gray-300 font-mono">850/1000</span>
+                    </div>
+
+                    <!-- Health Bar -->
+                    <div class="w-full bg-gray-950 h-3.5 rounded-full overflow-hidden p-0.5 border border-red-900/60 mb-1.5">
+                        <div id="hpBar" class="bg-gradient-to-r from-red-700 via-red-500 to-rose-400 h-full rounded-full transition-all duration-200" style="width: 85%;"></div>
+                    </div>
+
+                    <!-- Mana Bar -->
+                    <div class="w-full bg-gray-950 h-2.5 rounded-full overflow-hidden p-0.5 border border-blue-900/60">
+                        <div id="mpBar" class="bg-gradient-to-r from-blue-700 via-cyan-500 to-sky-300 h-full rounded-full transition-all duration-200" style="width: 80%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quest Target Tracker (Center Top) -->
+            <div class="hidden sm:flex flex-col items-center glass-panel px-6 py-2 rounded-2xl gold-border max-w-xs text-center">
+                <span class="text-xs text-amber-300 font-khmer uppercase tracking-wider">គោលដៅបេសកកម្ម</span>
+                <span class="font-moul text-sm text-red-400 my-0.5">កម្ចាត់បិសាច Demon Overlord</span>
+                <div class="text-xs text-amber-100/90 font-mono flex items-center gap-1">
+                    <i class="fa-solid fa-skull text-red-500"></i>
+                    <span id="questCounter">15 / 20</span>
+                </div>
+            </div>
+
+            <!-- Minimap & Game Stats -->
+            <div class="pointer-events-auto flex items-center gap-3 glass-panel p-2 rounded-2xl">
+                <div class="hidden md:flex flex-col text-right font-mono text-xs">
+                    <div class="text-amber-400 flex items-center justify-end gap-1">
+                        <span id="goldText" class="text-amber-300 font-bold">12,500</span>
+                        <i class="fa-solid fa-coins text-yellow-500"></i>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">អង្គរវត្ត - Courtyard</div>
+                </div>
+
+                <!-- Radar Minimap -->
+                <div class="relative w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-amber-500/60 bg-slate-950/90 overflow-hidden flex items-center justify-center">
+                    <canvas id="minimapCanvas" class="w-full h-full"></canvas>
+                    <div class="absolute inset-0 rounded-full border border-amber-400/20 pointer-events-none"></div>
+                    <span class="absolute top-0 text-[9px] text-amber-400 font-bold">N</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MIDDLE FLOATING STATS / COMBOS -->
+        <div class="flex justify-between items-center pointer-events-none px-4">
+            <!-- Combo Counter Overlay -->
+            <div id="comboContainer" class="transition-all duration-200 opacity-0 transform scale-75">
+                <div class="font-moul italic text-4xl md:text-6xl text-amber-400 drop-shadow-[0_4px_10px_rgba(245,158,11,0.8)]">
+                    COMBO <span id="comboText" class="text-red-500 font-mono">x3</span>
+                </div>
+                <div class="text-xs md:text-sm text-yellow-200 tracking-widest font-khmer uppercase">ការវាយប្រហារបន្តបន្ទាប់</div>
+            </div>
+
+            <!-- Boss Health Bar (Appears when fighting Demon Boss) -->
+            <div id="bossBarContainer" class="glass-panel p-3 rounded-xl max-w-md w-full mx-auto hidden border-red-600/50">
+                <div class="flex justify-between items-center text-xs font-moul mb-1">
+                    <span class="text-red-500 flex items-center gap-1">
+                        <i class="fa-solid fa-dragon"></i> មេបិសាចលោហិត (Demon Overlord)
+                    </span>
+                    <span id="bossHpText" class="text-gray-300">100%</span>
+                </div>
+                <div class="w-full bg-black h-3 rounded-full overflow-hidden border border-red-500/40">
+                    <div id="bossHpBar" class="bg-gradient-to-r from-red-900 via-red-600 to-orange-500 h-full w-full transition-all duration-100"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM ACTION & CONTROL BAR -->
+        <div class="flex justify-between items-end w-full pb-2">
+            
+            <!-- Mobile Virtual Joystick Area -->
+            <div class="pointer-events-auto relative w-28 h-28 md:w-36 md:h-36 flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity">
+                <div id="joystickZone" class="w-full h-full rounded-full border-2 border-amber-500/40 bg-black/40 backdrop-blur-sm relative flex items-center justify-center touch-none">
+                    <div id="joystickKnob" class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 border border-yellow-300 shadow-lg transform transition-transform"></div>
+                </div>
+            </div>
+
+            <!-- Action & Skill Buttons HUD -->
+            <div class="pointer-events-auto flex items-end gap-2 md:gap-4">
+                
+                <!-- Health Potion Button -->
+                <button id="potionBtn" class="relative group glass-panel p-2 md:p-3 rounded-2xl gold-border active:scale-95 transition-transform flex flex-col items-center">
+                    <div class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl bg-red-950/60 border border-red-500/50">
+                        <i class="fa-solid fa-flask text-red-500 text-xl md:text-2xl group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-amber-200 mt-1 font-khmer">ថ្នាំព្យាបាល</span>
+                    <span id="potionCount" class="absolute -top-2 -right-2 bg-red-600 text-white font-mono text-xs px-2 py-0.5 rounded-full border border-yellow-400 font-bold">10</span>
+                </button>
+
+                <!-- Skill 1: Slash (វាយដាវ) -->
+                <button id="skill1Btn" class="relative glass-panel p-2 md:p-3 rounded-2xl gold-border active:scale-95 transition-transform flex flex-col items-center group">
+                    <div class="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-xl bg-amber-950/60 border border-amber-500/50">
+                        <i class="fa-solid fa-hand-fist text-amber-400 text-2xl md:text-3xl group-hover:rotate-12 transition-transform"></i>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-amber-200 mt-1 font-khmer">1. វាយដាវ</span>
+                    <span class="text-[9px] text-gray-400 font-mono">[J / Tap]</span>
+                    <div id="cd1" class="cooldown-overlay hidden">4s</div>
+                </button>
+
+                <!-- Skill 2: Water Wave (រលកទឹក) -->
+                <button id="skill2Btn" class="relative glass-panel p-2 md:p-3 rounded-2xl gold-border active:scale-95 transition-transform flex flex-col items-center group">
+                    <div class="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-xl bg-cyan-950/60 border border-cyan-500/50">
+                        <i class="fa-solid fa-water text-cyan-400 text-2xl md:text-3xl group-hover:scale-110 transition-transform"></i>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-cyan-200 mt-1 font-khmer">2. រលកទឹក</span>
+                    <span class="text-[9px] text-gray-400 font-mono">[K]</span>
+                    <div id="cd2" class="cooldown-overlay hidden">12s</div>
+                </button>
+
+                <!-- Skill 3: Lightning Thorns (រន្ទះបន្លា) -->
+                <button id="skill3Btn" class="relative glass-panel p-2 md:p-3 rounded-2xl gold-border active:scale-95 transition-transform flex flex-col items-center group">
+                    <div class="w-12 h-12 md:w-14 md:h-14 flex items-center justify-center rounded-xl bg-yellow-950/60 border border-yellow-500/50">
+                        <i class="fa-solid fa-bolt text-yellow-300 text-2xl md:text-3xl group-hover:animate-bounce"></i>
+                    </div>
+                    <span class="text-[10px] md:text-xs text-yellow-200 mt-1 font-khmer">3. រន្ទះបន្លា</span>
+                    <span class="text-[9px] text-gray-400 font-mono">[L]</span>
+                    <div id="cd3" class="cooldown-overlay hidden">25s</div>
+                </button>
+
+                <!-- Main Normal Attack Button (Large) -->
+                <button id="attackBtn" class="relative glass-panel p-3 md:p-4 rounded-3xl border-2 border-amber-400 bg-gradient-to-br from-amber-600/80 to-red-800/80 active:scale-90 transition-transform shadow-[0_0_20px_rgba(245,158,11,0.6)]">
+                    <div class="w-14 h-14 md:w-16 md:h-16 flex flex-col items-center justify-center text-white">
+                        <i class="fa-solid fa-wand-magic-sparkles text-3xl md:text-4xl"></i>
+                        <span class="text-[10px] font-khmer font-bold mt-1">វាយប្រហារ</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- START / GAMEOVER DIALOG MODAL -->
+    <div id="modalOverlay" class="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="glass-panel p-6 md:p-8 rounded-3xl max-w-lg w-full text-center border-2 border-amber-500 shadow-[0_0_50px_rgba(212,175,55,0.3)]">
+            <h1 class="font-moul text-2xl md:text-3xl text-amber-400 mb-2 gold-text-glow">វីរបុរសខ្មែរ: សង្គ្រាមអង្គរ</h1>
+            <p class="text-sm md:text-base text-gray-300 mb-6 font-khmer">
+                គ្រប់គ្រងវីរបុរសខ្មែរបុរាណ ប្រយុទ្ធជាមួយបិសាចនៅមុខប្រាសាទអង្គរវត្ត។ បញ្ចេញជំនាញដាវ រលកទឹក និងរន្ទះបន្លាដើម្បីការពារទឹកដី!
+            </p>
+
+            <div class="bg-black/50 p-4 rounded-2xl text-left text-xs md:text-sm text-amber-200/90 mb-6 space-y-1.5 border border-amber-500/30">
+                <div class="font-bold text-amber-400 mb-1">🎮 ការបញ្ជា / Controls:</div>
+                <div>• <span class="text-white font-mono">WASD / Arrow Keys</span> : ចលនាដើរ (Move)</div>
+                <div>• <span class="text-white font-mono">J / Space</span> : វាយប្រហារសាមញ្ញ (Attack)</div>
+                <div>• <span class="text-white font-mono">K</span> : ជំនាញរលកទឹក (Water Wave Skill)</div>
+                <div>• <span class="text-white font-mono">L</span> : ជំនាញរន្ទះបន្លា (Lightning Skill)</div>
+                <div>• <span class="text-white font-mono">H</span> : បូមថ្នាំព្យាបាល (Use Potion)</div>
+            </div>
+
+            <button id="startBtn" class="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-black font-moul text-lg shadow-lg hover:brightness-110 active:scale-95 transition-all gold-border">
+                ចាប់ផ្តើមលេង (Start Game)
+            </button>
+        </div>
+    </div>
+
+    <!-- AUDIO SYNTHESIZER & GAME ENGINE SCRIPT -->
+    <script>
+        /**
+         * AAA WEB AUDIO SYNTHESIZER
+         * Generates realistic combat sound effects procedurally without external audio assets.
+         */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            // Sword Swing Swoosh
+            playSwing() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const filter = this.ctx.createBiquadFilter();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.08);
+                osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.2);
+
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            // Hit Impact / Slash Sound
+            playHit() {
+                if (!this.ctx) return;
+                // Noise buffer for visceral hit
+                const bufferSize = this.ctx.sampleRate * 0.15;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.Q.setValueAtTime(3, this.ctx.currentTime);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start();
+            }
+
+            // Magic Water / Lightning Wave Sound
+            playSpell() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(800, this.ctx.currentTime + 0.3);
+                osc.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.6);
+
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.6);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.6);
+            }
+
+            // Potion Drink Heal Sound
+            playHeal() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.4);
+
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.4);
+            }
+        }
+
+        const audio = new SoundEngine();
+
+        /**
+         * GAME ENGINE CORE
+         */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const miniCtx = minimapCanvas.getContext('2d');
+
+        // State & Variables
+        let width, height;
+        let isRunning = false;
+        let comboCount = 0;
+        let comboTimer = null;
+        let killsCount = 15;
+        let goldAmount = 12500;
+
+        // Camera Shake effect
+        let shakeIntensity = 0;
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            minimapCanvas.width = 100;
+            minimapCanvas.height = 100;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Player State (Khmer Warrior)
+        const player = {
+            x: width / 2,
+            y: height / 2 + 100,
+            radius: 28,
+            speed: 4.5,
+            hp: 850,
+            maxHp: 1000,
+            mp: 320,
+            maxMp: 400,
+            angle: 0,
+            vx: 0,
+            vy: 0,
+            isAttacking: false,
+            attackFrame: 0,
+            attackType: 'normal', // normal, water, lightning
+            potions: 10,
+            cooldowns: { skill1: 0, skill2: 0, skill3: 0 }
+        };
+
+        // Enemy List (Demons & Boss)
+        let enemies = [];
+        let particles = [];
+        let floatingTexts = [];
+
+        class Enemy {
+            constructor(x, y, isBoss = false) {
+                this.x = x;
+                this.y = y;
+                this.isBoss = isBoss;
+                this.radius = isBoss ? 48 : 26;
+                this.hp = isBoss ? 3000 : 450;
+                this.maxHp = this.hp;
+                this.speed = isBoss ? 1.8 : 2.5;
+                this.damage = isBoss ? 40 : 18;
+                this.color = isBoss ? '#990000' : '#4a1525';
+                this.attackCooldown = 0;
+                this.hitTime = 0;
+            }
+
+            update() {
+                // Move towards player
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > this.radius + player.radius - 5) {
+                    this.x += (dx / dist) * this.speed;
+                    this.y += (dy / dist) * this.speed;
+                } else if (this.attackCooldown <= 0) {
+                    // Attack Player
+                    player.hp = Math.max(0, player.hp - this.damage);
+                    this.attackCooldown = 60; // frames
+                    triggerHurt();
+                    createFloatingText(player.x, player.y - 40, `-${this.damage}`, '#ef4444');
+                }
+
+                if (this.attackCooldown > 0) this.attackCooldown--;
+                if (this.hitTime > 0) this.hitTime--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Demon Shadow
+                ctx.beginPath();
+                ctx.ellipse(0, this.radius + 5, this.radius * 0.9, this.radius * 0.4, 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fill();
+
+                // Demon Body (Photorealistic stylized gradient)
+                const grad = ctx.createRadialGradient(0, 0, 5, 0, 0, this.radius);
+                if (this.hitTime > 0) {
+                    grad.addColorStop(0, '#ffffff');
+                    grad.addColorStop(1, '#ff4444');
+                } else {
+                    grad.addColorStop(0, this.isBoss ? '#dc2626' : '#7f1d1d');
+                    grad.addColorStop(1, '#18080c');
+                }
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = grad;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = this.isBoss ? '#f59e0b' : '#330000';
+                ctx.stroke();
+
+                // Demon Horns
+                ctx.fillStyle = '#111';
+                ctx.beginPath();
+                ctx.moveTo(-this.radius * 0.5, -this.radius * 0.6);
+                ctx.quadraticCurveTo(-this.radius * 0.8, -this.radius * 1.4, -this.radius * 0.2, -this.radius * 1.1);
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(this.radius * 0.5, -this.radius * 0.6);
+                ctx.quadraticCurveTo(this.radius * 0.8, -this.radius * 1.4, this.radius * 0.2, -this.radius * 1.1);
+                ctx.fill();
+
+                // Glowing Red Eyes
+                ctx.fillStyle = '#ff0000';
+                ctx.shadowColor = '#ff0000';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(-this.radius * 0.3, -this.radius * 0.2, 4, 0, Math.PI * 2);
+                ctx.arc(this.radius * 0.3, -this.radius * 0.2, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+
+                // Health bar above enemy
+                if (this.hp < this.maxHp) {
+                    const barW = this.radius * 2;
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.fillRect(this.x - barW / 2, this.y - this.radius - 18, barW, 6);
+                    ctx.fillStyle = this.isBoss ? '#f59e0b' : '#ef4444';
+                    ctx.fillRect(this.x - barW / 2, this.y - this.radius - 18, (this.hp / this.maxHp) * barW, 6);
+                }
+            }
+        }
+
+        // Particle Effects (Sparks, Magic, Blood)
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life / this.maxLife;
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Floating Damage Numbers
+        function createFloatingText(x, y, text, color) {
+            floatingTexts.push({
+                x, y, text, color, life: 40, vy: -1.5
+            });
+        }
+
+        function triggerHurt() {
+            shakeIntensity = 12;
+            const flash = document.getElementById('hurtFlash');
+            flash.classList.remove('damage-flash');
+            void flash.offsetWidth; // trigger reflow
+            flash.classList.add('damage-flash');
+        }
+
+        function addCombo() {
+            comboCount++;
+            const container = document.getElementById('comboContainer');
+            const text = document.getElementById('comboText');
+            text.innerText = `x${comboCount}`;
+            container.classList.remove('opacity-0', 'scale-75');
+            container.classList.add('opacity-100', 'scale-110');
+
+            clearTimeout(comboTimer);
+            comboTimer = setTimeout(() => {
+                comboCount = 0;
+                container.classList.add('opacity-0', 'scale-75');
+            }, 2500);
+        }
+
+        // Spawn Initial Enemies
+        function spawnEnemies() {
+            enemies = [];
+            for (let i = 0; i < 4; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 300 + Math.random() * 200;
+                enemies.push(new Enemy(player.x + Math.cos(angle) * dist, player.y + Math.sin(angle) * dist));
+            }
+            // Add 1 Demon Boss
+            enemies.push(new Enemy(width / 2, height / 2 - 250, true));
+        }
+
+        /**
+         * RENDER ANGKOR WAT TEMPLE BACKGROUND & ATMOSPHERE
+         */
+        function drawAncientTempleBackground() {
+            // Atmospheric Sky Gradient (Sunset Khmer Golden Hour)
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+            skyGrad.addColorStop(0, '#1a0b12');
+            skyGrad.addColorStop(0.4, '#3b1c19');
+            skyGrad.addColorStop(0.7, '#633118');
+            skyGrad.addColorStop(1, '#1c1514');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // Courtyard Stone Floor Tiles
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.08)';
+            ctx.lineWidth = 1.5;
+            const tileSize = 80;
+            for (let x = 0; x < width; x += tileSize) {
+                for (let y = 0; y < height; y += tileSize) {
+                    ctx.strokeRect(x, y, tileSize, tileSize);
+                }
+            }
+
+            // Distant Angkor Wat Temple Silhouette / Towers
+            ctx.save();
+            ctx.fillStyle = '#0f0a0d';
+            const centerX = width / 2;
+            const baseY = height * 0.45;
+
+            // Draw Central Angkor Tower
+            ctx.beginPath();
+            ctx.moveTo(centerX - 100, baseY);
+            ctx.lineTo(centerX - 80, baseY - 120);
+            ctx.lineTo(centerX - 50, baseY - 200);
+            ctx.lineTo(centerX, baseY - 260); // Peak
+            ctx.lineTo(centerX + 50, baseY - 200);
+            ctx.lineTo(centerX + 80, baseY - 120);
+            ctx.lineTo(centerX + 100, baseY);
+            ctx.fill();
+
+            // Side Towers
+            [-180, 180].forEach(offset => {
+                ctx.beginPath();
+                ctx.moveTo(centerX + offset - 70, baseY);
+                ctx.lineTo(centerX + offset - 40, baseY - 140);
+                ctx.lineTo(centerX + offset, baseY - 180);
+                ctx.lineTo(centerX + offset + 40, baseY - 140);
+                ctx.lineTo(centerX + offset + 70, baseY);
+                ctx.fill();
+            });
+            ctx.restore();
+
+            // Ambient Dust & Fog particles
+            ctx.fillStyle = 'rgba(245, 158, 11, 0.03)';
+            ctx.fillRect(0, 0, width, height);
+        }
+
+        /**
+         * RENDER KHMER WARRIOR (PLAYER)
+         */
+        function drawKhmerWarrior() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+
+            // Character Shadow
+            ctx.beginPath();
+            ctx.ellipse(0, player.radius + 2, player.radius * 0.8, player.radius * 0.35, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fill();
+
+            // Rotate towards facing/mouse direction
+            ctx.rotate(player.angle);
+
+            // Warrior Armor Body (Leather + Gold Highlights)
+            ctx.beginPath();
+            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
+            const bodyGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, player.radius);
+            bodyGrad.addColorStop(0, '#d4af37'); // Gold
+            bodyGrad.addColorStop(0.5, '#78350f'); // Leather
+            bodyGrad.addColorStop(1, '#271206');
+            ctx.fillStyle = bodyGrad;
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#f59e0b';
+            ctx.stroke();
+
+            // Krama Red Sash across body
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillRect(-player.radius * 0.7, -4, player.radius * 1.4, 8);
+
+            // Ancient Golden Crown / Chada Helmet peak
+            ctx.fillStyle = '#fbbf24';
+            ctx.beginPath();
+            ctx.arc(0, -5, 10, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Glowing Sacred Sword (Khmer Ancient Blade)
+            ctx.save();
+            ctx.translate(18, -10); // Hand position
+
+            // Blade Glow Effect
+            ctx.shadowColor = '#60a5fa';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#e0f2fe';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(45, -5);
+            ctx.lineTo(55, -2); // Tip
+            ctx.lineTo(45, 1);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Sword Hilt (Khmer Gold Design)
+            ctx.fillStyle = '#d4af37';
+            ctx.fillRect(-6, -4, 8, 8);
+            ctx.restore();
+
+            // Attack Animation Slashes
+            if (player.isAttacking) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.strokeStyle = player.attackType === 'water' ? '#06b6d4' : (player.attackType === 'lightning' ? '#facc15' : '#f59e0b');
+                ctx.shadowColor = ctx.strokeStyle;
+                ctx.shadowBlur = 20;
+                ctx.lineWidth = 8;
+                ctx.arc(0, 0, player.radius + 35, -Math.PI / 3, Math.PI / 3);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        /**
+         * PLAYER ATTACK LOGIC
+         */
+        function performAttack(type = 'normal') {
+            player.isAttacking = true;
+            player.attackFrame = 12;
+            player.attackType = type;
+
+            if (type === 'normal') audio.playSwing();
+            else audio.playSpell();
+
+            let attackRadius = 85;
+            let dmg = 120;
+
+            if (type === 'water') {
+                attackRadius = 140;
+                dmg = 280;
+                shakeIntensity = 8;
+            } else if (type === 'lightning') {
+                attackRadius = 180;
+                dmg = 450;
+                shakeIntensity = 15;
+            }
+
+            // Check hit enemies
+            enemies.forEach((enemy, index) => {
+                const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
+                if (dist <= attackRadius + enemy.radius) {
+                    enemy.hp -= dmg;
+                    enemy.hitTime = 10;
+                    audio.playHit();
+                    addCombo();
+
+                    // Sparks / Blood particles
+                    for (let p = 0; p < 12; p++) {
+                        const ang = Math.random() * Math.PI * 2;
+                        const spd = Math.random() * 6 + 2;
+                        particles.push(new Particle(
+                            enemy.x, enemy.y,
+                            Math.cos(ang) * spd, Math.sin(ang) * spd,
+                            type === 'lightning' ? '#facc15' : '#ef4444',
+                            Math.random() * 4 + 2, 20
+                        ));
+                    }
+
+                    createFloatingText(enemy.x, enemy.y - 20, `-${dmg}`, type === 'lightning' ? '#facc15' : '#ffffff');
+
+                    // Check Enemy Death
+                    if (enemy.hp <= 0) {
+                        enemies.splice(index, 1);
+                        killsCount++;
+                        goldAmount += enemy.isBoss ? 2500 : 350;
+                        document.getElementById('questCounter').innerText = `${Math.min(20, killsCount)} / 20`;
+                        document.getElementById('goldText').innerText = goldAmount.toLocaleString();
+
+                        // Respawn standard enemies continuously
+                        if (!enemy.isBoss) {
+                            setTimeout(() => {
+                                const ang = Math.random() * Math.PI * 2;
+                                enemies.push(new Enemy(player.x + Math.cos(ang) * 400, player.y + Math.sin(ang) * 400));
+                            }, 3000);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Potion Drink Heal
+        function drinkPotion() {
+            if (player.potions > 0 && player.hp < player.maxHp) {
+                player.potions--;
+                player.hp = Math.min(player.maxHp, player.hp + 300);
+                audio.playHeal();
+                document.getElementById('potionCount').innerText = player.potions;
+
+                createFloatingText(player.x, player.y - 30, '+300 HP', '#10b981');
+
+                // Green Healing Aura Particles
+                for (let i = 0; i < 15; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    particles.push(new Particle(
+                        player.x, player.y,
+                        Math.cos(ang) * 2, Math.sin(ang) * 2,
+                        '#10b981', 4, 30
+                    ));
+                }
+            }
+        }
+
+        /**
+         * RENDER RADAR MINIMAP
+         */
+        function drawMinimap() {
+            miniCtx.clearRect(0, 0, 100, 100);
+
+            // Player Dot (Green)
+            miniCtx.fillStyle = '#10b981';
+            miniCtx.beginPath();
+            miniCtx.arc(50, 50, 4, 0, Math.PI * 2);
+            miniCtx.fill();
+
+            // Enemies Red Dots
+            enemies.forEach(e => {
+                const relX = 50 + (e.x - player.x) * 0.08;
+                const relY = 50 + (e.y - player.y) * 0.08;
+
+                if (relX >= 0 && relX <= 100 && relY >= 0 && relY <= 100) {
+                    miniCtx.fillStyle = e.isBoss ? '#f59e0b' : '#ef4444';
+                    miniCtx.beginPath();
+                    miniCtx.arc(relX, relY, e.isBoss ? 4 : 2.5, 0, Math.PI * 2);
+                    miniCtx.fill();
+                }
+            });
+        }
+
+        /**
+         * MAIN GAME LOOP
+         */
+        function gameLoop() {
+            if (!isRunning) return;
+
+            // Camera Shake Handling
+            ctx.save();
+            if (shakeIntensity > 0) {
+                const dx = (Math.random() - 0.5) * shakeIntensity;
+                const dy = (Math.random() - 0.5) * shakeIntensity;
+                ctx.translate(dx, dy);
+                shakeIntensity *= 0.85;
+                if (shakeIntensity < 0.5) shakeIntensity = 0;
+            }
+
+            // 1. Clear & Draw Scene
+            drawAncientTempleBackground();
+
+            // 2. Update Player Position from Velocity
+            player.x += player.vx;
+            player.y += player.vy;
+            player.x = Math.max(player.radius, Math.min(width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(height - player.radius, player.y));
+
+            if (player.attackFrame > 0) {
+                player.attackFrame--;
+                if (player.attackFrame === 0) player.isAttacking = false;
+            }
+
+            // 3. Render Entities
+            drawKhmerWarrior();
+
+            enemies.forEach(enemy => {
+                enemy.update();
+                enemy.draw();
+            });
+
+            // Update & Render Particles
+            particles.forEach((p, idx) => {
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(idx, 1);
+            });
+
+            // Floating Numbers
+            floatingTexts.forEach((ft, idx) => {
+                ft.y += ft.vy;
+                ft.life--;
+                ctx.save();
+                ctx.globalAlpha = ft.life / 40;
+                ctx.font = 'bold 18px Siemreap';
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, ft.x - 15, ft.y);
+                ctx.restore();
+
+                if (ft.life <= 0) floatingTexts.splice(idx, 1);
+            });
+
+            ctx.restore(); // Restore camera shake translate
+
+            // Update HUD UI
+            document.getElementById('hpBar').style.width = `${(player.hp / player.maxHp) * 100}%`;
+            document.getElementById('hpText').innerText = `${Math.ceil(player.hp)}/${player.maxHp}`;
+
+            // Boss Health Bar HUD update
+            const boss = enemies.find(e => e.isBoss);
+            const bossContainer = document.getElementById('bossBarContainer');
+            if (boss) {
+                bossContainer.classList.remove('hidden');
+                const bossHpPct = Math.max(0, (boss.hp / boss.maxHp) * 100);
+                document.getElementById('bossHpBar').style.width = `${bossHpPct}%`;
+                document.getElementById('bossHpText').innerText = `${Math.ceil(bossHpPct)}%`;
+            } else {
+                bossContainer.classList.add('hidden');
+            }
+
+            // Minimap Update
+            drawMinimap();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        /**
+         * INPUT HANDLERS (KEYBOARD & TOUCH JOYSTICK)
+         */
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+            updateKeyboardMovement();
+
+            if (e.key === ' ' || e.key.toLowerCase() === 'j') performAttack('normal');
+            if (e.key.toLowerCase() === 'k') triggerSkill2();
+            if (e.key.toLowerCase() === 'l') triggerSkill3();
+            if (e.key.toLowerCase() === 'h') drinkPotion();
+        });
+
+        window.addEventListener('keyup', e => {
+            keys[e.key.toLowerCase()] = false;
+            updateKeyboardMovement();
+        });
+
+        function updateKeyboardMovement() {
+            let dx = 0;
+            let dy = 0;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const len = Math.hypot(dx, dy);
+                player.vx = (dx / len) * player.speed;
+                player.vy = (dy / len) * player.speed;
+                player.angle = Math.atan2(dy, dx);
+            } else {
+                player.vx = 0;
+                player.vy = 0;
+            }
+        }
+
+        // Aim player towards mouse click/tap
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            player.angle = Math.atan2(mouseY - player.y, mouseX - player.x);
+        });
+
+        // Virtual Touch Joystick Implementation
+        const joystickZone = document.getElementById('joystickZone');
+        const joystickKnob = document.getElementById('joystickKnob');
+        let joystickActive = false;
+
+        function handleJoystickMove(clientX, clientY) {
+            const rect = joystickZone.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            let dx = clientX - centerX;
+            let dy = clientY - centerY;
+            const dist = Math.hypot(dx, dy);
+            const maxRadius = rect.width / 2 - 10;
+
+            if (dist > maxRadius) {
+                dx = (dx / dist) * maxRadius;
+                dy = (dy / dist) * maxRadius;
+            }
+
+            joystickKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+            player.vx = (dx / maxRadius) * player.speed;
+            player.vy = (dy / maxRadius) * player.speed;
+            if (dist > 5) {
+                player.angle = Math.atan2(dy, dx);
+            }
+        }
+
+        joystickZone.addEventListener('touchstart', e => {
+            joystickActive = true;
+            handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
+        });
+
+        window.addEventListener('touchmove', e => {
+            if (joystickActive) {
+                handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        window.addEventListener('touchend', () => {
+            if (joystickActive) {
+                joystickActive = false;
+                joystickKnob.style.transform = 'translate(0px, 0px)';
+                player.vx = 0;
+                player.vy = 0;
+            }
+        });
+
+        // Skill Button Click Events
+        function triggerSkill1() {
+            performAttack('normal');
+        }
+
+        function triggerSkill2() {
+            if (player.cooldowns.skill2 <= 0 && player.mp >= 40) {
+                player.mp -= 40;
+                performAttack('water');
+                startCooldown('cd2', 12, 'skill2');
+            }
+        }
+
+        function triggerSkill3() {
+            if (player.cooldowns.skill3 <= 0 && player.mp >= 80) {
+                player.mp -= 80;
+                performAttack('lightning');
+                startCooldown('cd3', 25, 'skill3');
+            }
+        }
+
+        function startCooldown(elemId, seconds, skillKey) {
+            player.cooldowns[skillKey] = seconds;
+            const cdOverlay = document.getElementById(elemId);
+            cdOverlay.classList.remove('hidden');
+
+            let remaining = seconds;
+            cdOverlay.innerText = `${remaining}s`;
+
+            const interval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(interval);
+                    cdOverlay.classList.add('hidden');
+                    player.cooldowns[skillKey] = 0;
+                } else {
+                    cdOverlay.innerText = `${remaining}s`;
+                }
+            }, 1000);
+        }
+
+        // Attach UI Button Listeners
+        document.getElementById('attackBtn').addEventListener('click', () => performAttack('normal'));
+        document.getElementById('skill1Btn').addEventListener('click', triggerSkill1);
+        document.getElementById('skill2Btn').addEventListener('click', triggerSkill2);
+        document.getElementById('skill3Btn').addEventListener('click', triggerSkill3);
+        document.getElementById('potionBtn').addEventListener('click', drinkPotion);
+
+        // Start Game Button Modal
+        document.getElementById('startBtn').addEventListener('click', () => {
+            audio.init();
+            document.getElementById('modalOverlay').classList.add('hidden');
+            isRunning = true;
+            spawnEnemies();
+            gameLoop();
+        });
+    </script>
+</body>
+</html>
